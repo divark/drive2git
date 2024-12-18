@@ -1,0 +1,64 @@
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+env:
+  EXECUTABLE_NAME: drive2git
+
+name: Continuous Deployment
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install mold linker when using Linux.
+        uses: rui314/setup-mold@v1
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the project
+        run: cargo build --release
+
+      - name: Zip release for Windows
+        if: runner.os == 'Windows'
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: target/release/${{ env.EXECUTABLE_NAME }}.exe
+          dest: ${{ env.EXECUTABLE_NAME }}_${{ runner.os }}.zip
+
+      - name: Zip release for macOS
+        if: runner.os == 'macOS'
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: target/release/${{ env.EXECUTABLE_NAME }}
+          dest: ${{ env.EXECUTABLE_NAME }}_${{ runner.os }}.zip
+
+      - name: Zip release for Linux
+        if: runner.os == 'Linux'
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: target/release/${{ env.EXECUTABLE_NAME }}
+          dest: ${{ env.EXECUTABLE_NAME }}_${{ runner.os }}.zip
+
+      - name: Upload release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/${{ env.EXECUTABLE_NAME }}_${{ runner.os }}.zip
+          overwrite: true
