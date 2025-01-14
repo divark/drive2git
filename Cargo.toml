@@ -8,3 +8,7 @@ edition = "2021"
 [dev-dependencies]
 cucumber = "^0.21"
 futures = "^0.3"
+
+[[test]]
+name = "cloud_drive"
+harness = false
